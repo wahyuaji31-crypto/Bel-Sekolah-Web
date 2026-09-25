@@ -6,6 +6,13 @@ class BellStorage {
     this.STORAGE_KEY_SCHEDULES = 'school_bell_schedules_v1';
     this.STORAGE_KEY_CONFIG = 'school_bell_config_v1';
     this.STORAGE_KEY_LOGS = 'school_bell_logs_v1';
+    this.STORAGE_KEY_USERS = 'school_bell_users_v1';
+    this.STORAGE_KEY_SESSION = 'school_bell_session_v1';
+
+    this.defaultUsers = [
+      { username: 'admin', password: 'admin123', name: 'Administrator', role: 'admin' },
+      { username: 'piket', password: 'piket123', name: 'Guru Piket', role: 'piket' }
+    ];
 
     this.defaultConfig = {
       schoolName: 'SMP / SMA NEGERI 1 INDONESIA',
@@ -209,10 +216,81 @@ class BellStorage {
     }
   }
 
+  loadUsers() {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY_USERS);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    this.saveUsers(this.defaultUsers);
+    return this.defaultUsers;
+  }
+
+  saveUsers(users) {
+    try {
+      localStorage.setItem(this.STORAGE_KEY_USERS, JSON.stringify(users));
+    } catch (e) {}
+  }
+
+  authenticate(username, password) {
+    const users = this.loadUsers();
+    const user = users.find(u => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password);
+    if (user) {
+      const sessionData = {
+        username: user.username,
+        name: user.name,
+        role: user.role, // 'admin' | 'piket'
+        loginAt: new Date().toISOString()
+      };
+      this.setSession(sessionData);
+      return { success: true, user: sessionData };
+    }
+    return { success: false, message: 'Username atau kata sandi salah!' };
+  }
+
+  getSession() {
+    try {
+      const session = localStorage.getItem(this.STORAGE_KEY_SESSION);
+      return session ? JSON.parse(session) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  setSession(sessionData) {
+    try {
+      localStorage.setItem(this.STORAGE_KEY_SESSION, JSON.stringify(sessionData));
+    } catch (e) {}
+  }
+
+  clearSession() {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY_SESSION);
+    } catch (e) {}
+  }
+
+  changePassword(username, oldPassword, newPassword) {
+    const users = this.loadUsers();
+    const idx = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+    if (idx === -1) return { success: false, message: 'User tidak ditemukan.' };
+    
+    if (users[idx].password !== oldPassword) {
+      return { success: false, message: 'Kata sandi lama salah.' };
+    }
+
+    if (!newPassword || newPassword.length < 4) {
+      return { success: false, message: 'Kata sandi baru minimal 4 karakter.' };
+    }
+
+    users[idx].password = newPassword;
+    this.saveUsers(users);
+    return { success: true, message: 'Kata sandi berhasil diperbarui!' };
+  }
+
   resetToDefault() {
     const defaults = this.generateDefaultSchedules();
     this.saveSchedules(defaults);
     this.saveConfig(this.defaultConfig);
+    this.saveUsers(this.defaultUsers);
     return defaults;
   }
 }

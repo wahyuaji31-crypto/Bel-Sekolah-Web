@@ -1,5 +1,5 @@
 /**
- * School Bell Main Application Controller
+ * School Bell Main Application Controller with Auth & Role Management
  */
 class SchoolBellApp {
   constructor() {
@@ -11,10 +11,12 @@ class SchoolBellApp {
     this.selectedDay = today; // default to today's day
     this.config = this.storage.loadConfig();
     this.schedules = this.storage.loadSchedules();
+    this.currentUser = this.storage.getSession(); // null | { username, name, role }
 
     this.initDOM();
     this.bindEvents();
     this.applyConfig();
+    this.renderAuthState();
     this.renderDayTabs();
     this.renderScheduleTable();
     this.renderLogs();
@@ -43,6 +45,25 @@ class SchoolBellApp {
     this.audioUnlockBanner = document.getElementById('audioUnlockBanner');
     this.btnUnlockAudio = document.getElementById('btnUnlockAudio');
     this.bellHeaderIcon = document.getElementById('bellHeaderIcon');
+
+    // Auth Elements
+    this.btnOpenLogin = document.getElementById('btnOpenLogin');
+    this.userProfileBadge = document.getElementById('userProfileBadge');
+    this.userNameText = document.getElementById('userNameText');
+    this.userRoleTag = document.getElementById('userRoleTag');
+    this.userRoleIcon = document.getElementById('userRoleIcon');
+    this.btnLogout = document.getElementById('btnLogout');
+    this.loginModal = document.getElementById('loginModal');
+    this.loginForm = document.getElementById('loginForm');
+    this.inputUsername = document.getElementById('inputUsername');
+    this.inputPassword = document.getElementById('inputPassword');
+    this.togglePasswordIcon = document.getElementById('togglePasswordIcon');
+    this.loginErrorMessage = document.getElementById('loginErrorMessage');
+    this.loginErrorText = document.getElementById('loginErrorText');
+    this.changePasswordSection = document.getElementById('changePasswordSection');
+    this.currentAccountTag = document.getElementById('currentAccountTag');
+    this.inputOldPassword = document.getElementById('inputOldPassword');
+    this.inputNewPassword = document.getElementById('inputNewPassword');
 
     // Table & Days
     this.dayTabsContainer = document.getElementById('dayTabsContainer');
@@ -110,8 +131,18 @@ class SchoolBellApp {
       if (!this.audio.isAudioUnlocked) unlockAudioFn();
     }, { once: true });
 
+    // Auth events
+    if (this.btnOpenLogin) this.btnOpenLogin.addEventListener('click', () => this.openLoginModal());
+    if (this.btnLogout) this.btnLogout.addEventListener('click', () => this.handleLogout());
+    if (this.loginForm) this.loginForm.addEventListener('submit', (e) => this.handleLoginSubmit(e));
+
     // Auto Bell toggle
     this.toggleAutoBell.addEventListener('change', (e) => {
+      if (!this.checkPermission('piket', 'mengubah status bel otomatis')) {
+        e.preventDefault();
+        this.toggleAutoBell.checked = this.config.autoBellActive;
+        return;
+      }
       this.config.autoBellActive = e.target.checked;
       this.storage.saveConfig(this.config);
       this.updateAutoBellStatusUI();
@@ -131,12 +162,13 @@ class SchoolBellApp {
 
     // Ring next now button
     this.btnRingNextNow.addEventListener('click', () => {
+      if (!this.checkPermission('piket', 'membunyikan bel')) return;
       const now = new Date();
       const currentDay = now.getDay();
       const todayList = (this.schedules[currentDay] || []).filter(item => item.enabled);
       const nextInfo = this.scheduler.calculateNextBell(now, todayList, this.schedules);
       if (nextInfo && nextInfo.bell) {
-        this.scheduler.triggerBell(nextInfo.bell, 'Manual Cepat');
+        this.scheduler.triggerBell(nextInfo.bell, `Manual (${this.currentUser ? this.currentUser.name : 'Piket'})`);
       } else {
         alert('Tidak ada jadwal bel yang dapat dibunyikan.');
       }
@@ -155,6 +187,7 @@ class SchoolBellApp {
 
     // Add modal button
     document.getElementById('btnOpenAddModal').addEventListener('click', () => {
+      if (!this.checkPermission('piket', 'menambah jadwal')) return;
       this.openAddModal();
     });
 
@@ -175,9 +208,18 @@ class SchoolBellApp {
     });
 
     // Settings Modal triggers
-    document.getElementById('btnOpenSettings').addEventListener('click', () => this.openSettingsModal());
-    document.getElementById('btnEditSchoolName').addEventListener('click', () => this.openSettingsModal());
-    document.getElementById('btnEditMarquee').addEventListener('click', () => this.openSettingsModal());
+    document.getElementById('btnOpenSettings').addEventListener('click', () => {
+      if (!this.checkPermission('admin', 'membuka pengaturan sistem')) return;
+      this.openSettingsModal();
+    });
+    document.getElementById('btnEditSchoolName').addEventListener('click', () => {
+      if (!this.checkPermission('admin', 'mengubah identitas sekolah')) return;
+      this.openSettingsModal();
+    });
+    document.getElementById('btnEditMarquee').addEventListener('click', () => {
+      if (!this.checkPermission('piket', 'mengubah teks pengumuman')) return;
+      this.openSettingsModal();
+    });
     this.settingVolume.addEventListener('input', (e) => {
       const val = parseFloat(e.target.value);
       this.volumePercentDisplay.textContent = `${Math.round(val * 100)}%`;
@@ -185,22 +227,33 @@ class SchoolBellApp {
     });
 
     // Backup Modal triggers
-    document.getElementById('btnOpenBackup').addEventListener('click', () => this.openBackupModal());
+    document.getElementById('btnOpenBackup').addEventListener('click', () => {
+      if (!this.checkPermission('admin', 'mengakses backup data')) return;
+      this.openBackupModal();
+    });
     this.importJsonFileInput.addEventListener('change', (e) => this.handleImportFile(e));
 
     // Copy schedule triggers
-    document.getElementById('btnCopyDaySchedule').addEventListener('click', () => this.openCopyModal());
+    document.getElementById('btnCopyDaySchedule').addEventListener('click', () => {
+      if (!this.checkPermission('admin', 'menyalin jadwal antarihari')) return;
+      this.openCopyModal();
+    });
 
     // Presets
     this.presetSelect.addEventListener('change', (e) => {
+      if (!this.checkPermission('admin', 'mengubah template jadwal')) {
+        this.presetSelect.value = this.config.activePreset || 'regular';
+        return;
+      }
       this.applyPreset(e.target.value);
     });
 
-    // Fullscreen toggle
+    // Fullscreen toggle (anyone can toggle fullscreen display)
     document.getElementById('btnFullscreen').addEventListener('click', () => this.toggleFullscreen());
 
     // Clear logs
     this.btnClearLogs.addEventListener('click', () => {
+      if (!this.checkPermission('piket', 'membersihkan log')) return;
       if (confirm('Yakin ingin menghapus semua catatan riwayat bel hari ini?')) {
         this.storage.clearLogs();
         this.renderLogs();
@@ -209,6 +262,7 @@ class SchoolBellApp {
 
     // Manual custom TTS speech
     this.btnManualSpeech.addEventListener('click', () => {
+      if (!this.checkPermission('piket', 'membuat pengumuman suara')) return;
       const text = this.manualCustomTtsText.value.trim();
       if (!text) {
         alert('Silakan ketik kalimat pengumuman terlebih dahulu.');
@@ -220,7 +274,7 @@ class SchoolBellApp {
         time: new Date().toTimeString().slice(0, 5),
         type: 'khusus',
         tone: 'dingdong',
-        source: 'Manual Suara',
+        source: `Suara (${this.currentUser ? this.currentUser.name : 'Piket'})`,
         announcement: text
       });
       this.renderLogs();
@@ -228,6 +282,121 @@ class SchoolBellApp {
     });
   }
 
+  // ================= AUTHENTICATION & PERMISSIONS =================
+  renderAuthState() {
+    this.currentUser = this.storage.getSession();
+    if (this.currentUser) {
+      if (this.btnOpenLogin) this.btnOpenLogin.classList.add('hidden');
+      if (this.userProfileBadge) this.userProfileBadge.classList.remove('hidden');
+      
+      this.userNameText.textContent = this.currentUser.name;
+      this.userRoleTag.textContent = this.currentUser.role.toUpperCase();
+      this.userRoleTag.className = this.currentUser.role === 'admin' 
+        ? 'text-[9px] uppercase font-extrabold text-amber-400 tracking-wider'
+        : 'text-[9px] uppercase font-extrabold text-blue-400 tracking-wider';
+
+      this.userRoleIcon.className = this.currentUser.role === 'admin'
+        ? 'fa-solid fa-crown text-amber-400'
+        : 'fa-solid fa-user-shield text-blue-400';
+
+      if (this.currentAccountTag) {
+        this.currentAccountTag.textContent = `${this.currentUser.username} (${this.currentUser.role})`;
+      }
+      if (this.changePasswordSection) {
+        this.changePasswordSection.classList.remove('hidden');
+      }
+    } else {
+      if (this.btnOpenLogin) this.btnOpenLogin.classList.remove('hidden');
+      if (this.userProfileBadge) this.userProfileBadge.classList.add('hidden');
+      if (this.changePasswordSection) this.changePasswordSection.classList.add('hidden');
+    }
+    this.renderScheduleTable();
+  }
+
+  checkPermission(requiredRole = 'piket', actionName = 'fitur ini') {
+    if (!this.currentUser) {
+      this.openLoginModal(`Silakan login sebagai ${requiredRole === 'admin' ? 'Administrator' : 'Guru Piket / Admin'} untuk ${actionName}.`);
+      return false;
+    }
+
+    if (requiredRole === 'admin' && this.currentUser.role !== 'admin') {
+      alert(`Akses Terbatas: Hanya Administrator yang berwenang untuk ${actionName}.`);
+      return false;
+    }
+
+    return true;
+  }
+
+  openLoginModal(message = '') {
+    if (this.loginErrorMessage) {
+      if (message) {
+        this.loginErrorText.textContent = message;
+        this.loginErrorMessage.className = 'p-2.5 rounded-xl bg-amber-950/60 border border-amber-800/80 text-amber-300 text-xs flex items-center gap-2';
+        this.loginErrorMessage.classList.remove('hidden');
+      } else {
+        this.loginErrorMessage.classList.add('hidden');
+      }
+    }
+    this.inputUsername.value = '';
+    this.inputPassword.value = '';
+    this.loginModal.classList.remove('hidden');
+    setTimeout(() => this.inputUsername.focus(), 100);
+  }
+
+  closeLoginModal() {
+    this.loginModal.classList.add('hidden');
+  }
+
+  quickFillLogin(username, password) {
+    this.inputUsername.value = username;
+    this.inputPassword.value = password;
+    if (this.loginErrorMessage) this.loginErrorMessage.classList.add('hidden');
+  }
+
+  togglePasswordVisibility() {
+    const isPassword = this.inputPassword.type === 'password';
+    this.inputPassword.type = isPassword ? 'text' : 'password';
+    this.togglePasswordIcon.className = isPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+  }
+
+  handleLoginSubmit(e) {
+    e.preventDefault();
+    const username = this.inputUsername.value.trim();
+    const password = this.inputPassword.value;
+
+    const result = this.storage.authenticate(username, password);
+    if (result.success) {
+      this.closeLoginModal();
+      this.renderAuthState();
+      alert(`Selamat datang, ${result.user.name}! Anda berhasil masuk.`);
+    } else {
+      this.loginErrorText.textContent = result.message;
+      this.loginErrorMessage.className = 'p-2.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2';
+      this.loginErrorMessage.classList.remove('hidden');
+    }
+  }
+
+  handleLogout() {
+    if (confirm('Apakah Anda yakin ingin keluar / logout?')) {
+      this.storage.clearSession();
+      this.renderAuthState();
+    }
+  }
+
+  handleChangePassword() {
+    if (!this.currentUser) return;
+    const oldPass = this.inputOldPassword.value;
+    const newPass = this.inputNewPassword.value;
+
+    const res = this.storage.changePassword(this.currentUser.username, oldPass, newPass);
+    alert(res.message);
+    if (res.success) {
+      this.inputOldPassword.value = '';
+      this.inputNewPassword.value = '';
+    }
+  }
+
+  // ================= CORE APPLICATION =================
   applyConfig() {
     this.headerSchoolName.childNodes[0].textContent = this.config.schoolName + ' ';
     this.headerSchoolSubtitle.textContent = this.config.schoolSubtitle;
@@ -297,6 +466,7 @@ class SchoolBellApp {
 
   renderScheduleTable() {
     const daySchedules = this.schedules[this.selectedDay] || [];
+    const isAuth = !!this.currentUser;
     
     // Sort schedules chronologically by time
     daySchedules.sort((a, b) => {
@@ -324,8 +494,8 @@ class SchoolBellApp {
           
           <!-- Toggle Switch -->
           <td class="py-3 px-3 whitespace-nowrap">
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" ${item.enabled ? 'checked' : ''} onchange="window.bellApp.toggleScheduleEnabled('${item.id}', this.checked)" class="sr-only peer">
+            <label class="relative inline-flex items-center ${isAuth ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}">
+              <input type="checkbox" ${item.enabled ? 'checked' : ''} ${isAuth ? '' : 'disabled'} onchange="window.bellApp.toggleScheduleEnabled('${item.id}', this.checked)" class="sr-only peer">
               <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </td>
@@ -364,11 +534,11 @@ class SchoolBellApp {
             <button onclick="window.bellApp.ringSingleBell('${item.id}')" title="Bunyikan Sekarang" class="p-1.5 bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white rounded-lg transition">
               <i class="fa-solid fa-play text-xs"></i>
             </button>
-            <button onclick="window.bellApp.openEditModal('${item.id}')" title="Edit Jadwal" class="p-1.5 bg-slate-800 hover:bg-amber-600 text-slate-300 hover:text-white rounded-lg transition">
-              <i class="fa-solid fa-pen-to-square text-xs"></i>
+            <button onclick="window.bellApp.openEditModal('${item.id}')" title="${isAuth ? 'Edit Jadwal' : 'Login untuk Mengedit'}" class="p-1.5 bg-slate-800 hover:bg-amber-600 text-slate-300 hover:text-white rounded-lg transition">
+              <i class="fa-solid ${isAuth ? 'fa-pen-to-square' : 'fa-lock'} text-xs"></i>
             </button>
-            <button onclick="window.bellApp.deleteSchedule('${item.id}')" title="Hapus Jadwal" class="p-1.5 bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white rounded-lg transition">
-              <i class="fa-solid fa-trash-can text-xs"></i>
+            <button onclick="window.bellApp.deleteSchedule('${item.id}')" title="${isAuth ? 'Hapus Jadwal' : 'Login untuk Menghapus'}" class="p-1.5 bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white rounded-lg transition">
+              <i class="fa-solid ${isAuth ? 'fa-trash-can' : 'fa-lock'} text-xs"></i>
             </button>
           </td>
 
@@ -404,6 +574,7 @@ class SchoolBellApp {
 
   // Quick manual ring panel
   quickRing(type) {
+    if (!this.checkPermission('piket', 'membunyikan bel manual')) return;
     const quickPresets = {
       masuk: { label: 'Masuk Kelas (Manual)', tone: 'westminster', announcement: 'Saatnya masuk kelas dan memulai kegiatan belajar.' },
       istirahat: { label: 'Istirahat (Manual)', tone: 'westminster', announcement: 'Saatnya waktu istirahat. Selamat beristirahat.' },
@@ -421,11 +592,12 @@ class SchoolBellApp {
         tone: preset.tone,
         announcement: preset.announcement,
         enabled: true
-      }, 'Tombol Cepat');
+      }, `Manual (${this.currentUser ? this.currentUser.name : 'Piket'})`);
     }
   }
 
   ringSingleBell(scheduleId) {
+    if (!this.checkPermission('piket', 'menguji bunyi bel')) return;
     const dayList = this.schedules[this.selectedDay] || [];
     const item = dayList.find(b => b.id === scheduleId);
     if (item) {
@@ -434,6 +606,10 @@ class SchoolBellApp {
   }
 
   toggleScheduleEnabled(scheduleId, isEnabled) {
+    if (!this.checkPermission('piket', 'mengubah status aktif bel')) {
+      this.renderScheduleTable();
+      return;
+    }
     const dayList = this.schedules[this.selectedDay] || [];
     const item = dayList.find(b => b.id === scheduleId);
     if (item) {
@@ -459,6 +635,7 @@ class SchoolBellApp {
   }
 
   openEditModal(scheduleId) {
+    if (!this.checkPermission('piket', 'mengedit jadwal')) return;
     const dayList = this.schedules[this.selectedDay] || [];
     const item = dayList.find(b => b.id === scheduleId);
     if (!item) return;
@@ -481,6 +658,7 @@ class SchoolBellApp {
   }
 
   saveScheduleFromForm() {
+    if (!this.checkPermission('piket', 'menyimpan jadwal')) return;
     const id = this.formScheduleId.value;
     const day = parseInt(this.formDayIndex.value, 10);
     const newSchedule = {
@@ -510,6 +688,7 @@ class SchoolBellApp {
   }
 
   deleteSchedule(scheduleId) {
+    if (!this.checkPermission('piket', 'menghapus jadwal')) return;
     if (confirm('Apakah Anda yakin ingin menghapus jadwal bel ini?')) {
       if (this.schedules[this.selectedDay]) {
         this.schedules[this.selectedDay] = this.schedules[this.selectedDay].filter(b => b.id !== scheduleId);
@@ -549,6 +728,7 @@ class SchoolBellApp {
   }
 
   executeCopySchedule() {
+    if (!this.checkPermission('admin', 'menyalin jadwal')) return;
     const checkedBoxes = document.querySelectorAll('.copy-target-checkbox:checked');
     if (checkedBoxes.length === 0) {
       alert('Pilih setidaknya satu hari tujuan.');
@@ -608,6 +788,7 @@ class SchoolBellApp {
   }
 
   saveSettings() {
+    if (!this.checkPermission('admin', 'mengubah konfigurasi sistem')) return;
     this.config.schoolName = this.settingSchoolName.value.trim() || 'SEKOLAH';
     this.config.schoolSubtitle = this.settingSchoolSubtitle.value.trim();
     this.config.runningText = this.settingRunningText.value.trim();
@@ -629,6 +810,7 @@ class SchoolBellApp {
   }
 
   handleImportFile(event) {
+    if (!this.checkPermission('admin', 'memulihkan data backup')) return;
     const file = event.target.files[0];
     if (!file) return;
 
@@ -655,6 +837,7 @@ class SchoolBellApp {
   }
 
   handleResetToDefault() {
+    if (!this.checkPermission('admin', 'mereset data ke default')) return;
     if (confirm('PERINGATAN: Semua perubahan jadwal Anda akan dihapus dan dikembalikan ke jadwal standar default. Lanjutkan?')) {
       this.schedules = this.storage.resetToDefault();
       this.config = this.storage.loadConfig();

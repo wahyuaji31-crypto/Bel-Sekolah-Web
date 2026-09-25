@@ -88,13 +88,32 @@
 
         <button id="btnOpenBackup" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
           <i class="fa-solid fa-database text-slate-400"></i>
-          <span class="hidden sm:inline">Backup / Restore</span>
+          <span class="hidden sm:inline">Backup</span>
         </button>
 
-        <button id="btnFullscreen" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-blue-600/20">
+        <button id="btnFullscreen" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" title="Mode Layar Penuh">
           <i class="fa-solid fa-expand"></i>
-          <span class="hidden sm:inline">Mode Layar Penuh</span>
+          <span class="hidden md:inline">Layar Penuh</span>
         </button>
+
+        <!-- Auth Buttons: Login or User Badge -->
+        <button id="btnOpenLogin" class="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-blue-600/25 transition active:scale-95">
+          <i class="fa-solid fa-lock"></i>
+          <span>Login Piket / Admin</span>
+        </button>
+
+        <div id="userProfileBadge" class="hidden flex items-center gap-2.5 bg-gradient-to-r from-slate-900 to-slate-800 border border-blue-500/40 rounded-xl px-3 py-1.5 shadow-md">
+          <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-user-shield" id="userRoleIcon"></i>
+          </div>
+          <div class="text-left">
+            <span id="userNameText" class="text-xs font-bold text-white block leading-tight">Guru Piket</span>
+            <span id="userRoleTag" class="text-[9px] uppercase font-extrabold text-blue-400 tracking-wider">PIKET</span>
+          </div>
+          <button id="btnLogout" class="ml-1 text-slate-400 hover:text-rose-400 p-1 rounded-lg hover:bg-slate-700/50 transition" title="Keluar / Logout">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
       </div>
 
     </div>
@@ -499,6 +518,23 @@
           </label>
         </div>
 
+        <!-- Change Password Section (For Logged In Users) -->
+        <div id="changePasswordSection" class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              <i class="fa-solid fa-key text-amber-400"></i> Ubah Kata Sandi Akun
+            </span>
+            <span id="currentAccountTag" class="text-[10px] text-blue-400 font-mono">admin</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="password" id="inputOldPassword" placeholder="Sandi Lama" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500">
+            <input type="password" id="inputNewPassword" placeholder="Sandi Baru (min. 4)" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500">
+          </div>
+          <button type="button" onclick="window.bellApp.handleChangePassword()" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition">
+            Simpan Kata Sandi Baru
+          </button>
+        </div>
+
       </div>
 
       <div class="flex items-center justify-end space-x-2 pt-4 mt-4 border-t border-slate-800">
@@ -509,6 +545,81 @@
           Simpan Pengaturan
         </button>
       </div>
+
+    </div>
+  </div>
+
+  <!-- ================= MODAL: LOGIN PIKET / ADMIN ================= -->
+  <div id="loginModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden">
+      
+      <!-- Top Glow -->
+      <div class="absolute -top-10 -right-10 w-36 h-36 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center text-base">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Login Petugas Piket / Admin</h3>
+            <p class="text-[11px] text-slate-400">Masuk untuk mengelola jadwal dan kontrol bel</p>
+          </div>
+        </div>
+        <button onclick="window.bellApp.closeLoginModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Quick Fill Helper Buttons -->
+      <div class="my-4 p-3 bg-slate-950/80 border border-slate-800 rounded-xl">
+        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block mb-2">Pilih Akun Cepat (Default):</span>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="window.bellApp.quickFillLogin('piket', 'piket123')" class="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg text-left text-xs transition">
+            <span class="font-bold text-blue-400 block">Guru Piket</span>
+            <span class="text-[10px] text-slate-400 font-mono">piket / piket123</span>
+          </button>
+          <button type="button" onclick="window.bellApp.quickFillLogin('admin', 'admin123')" class="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg text-left text-xs transition">
+            <span class="font-bold text-indigo-400 block">Administrator</span>
+            <span class="text-[10px] text-slate-400 font-mono">admin / admin123</span>
+          </button>
+        </div>
+      </div>
+
+      <form id="loginForm" class="space-y-3.5">
+        <div id="loginErrorMessage" class="hidden p-2.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
+          <i class="fa-solid fa-circle-exclamation text-rose-400"></i>
+          <span id="loginErrorText">Username atau kata sandi salah.</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Username</label>
+          <div class="relative">
+            <input type="text" id="inputUsername" required placeholder="Masukkan username (admin / piket)" class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+            <i class="fa-solid fa-user absolute left-3 top-2.5 text-xs text-slate-500"></i>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Kata Sandi</label>
+          <div class="relative">
+            <input type="password" id="inputPassword" required placeholder="Masukkan kata sandi" class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-9 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+            <i class="fa-solid fa-lock absolute left-3 top-2.5 text-xs text-slate-500"></i>
+            <button type="button" onclick="window.bellApp.togglePasswordVisibility()" class="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-white">
+              <i class="fa-solid fa-eye" id="togglePasswordIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="window.bellApp.closeLoginModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">
+            Batal
+          </button>
+          <button type="submit" class="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/25 transition active:scale-95">
+            <i class="fa-solid fa-right-to-bracket mr-1"></i> Masuk Sekarang
+          </button>
+        </div>
+      </form>
 
     </div>
   </div>
