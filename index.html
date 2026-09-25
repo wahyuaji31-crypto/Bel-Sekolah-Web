@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart School Bell - Aplikasi Bel Sekolah Digital</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Phosphor Icons or FontAwesome via CDN for rich iconography -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-600 selection:text-white">
+
+  <!-- ================= AUDIO UNLOCK BANNER ================= -->
+  <div id="audioUnlockBanner" class="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-4 py-2.5 text-sm font-medium flex items-center justify-between shadow-lg sticky top-0 z-50 transition-all duration-300">
+    <div class="flex items-center space-x-3">
+      <i class="fa-solid fa-volume-xmark text-lg animate-pulse"></i>
+      <span><strong>Perhatian:</strong> Browser memerlukan izin untuk memutar suara bel secara otomatis. Klik tombol aktifkan di samping.</span>
+    </div>
+    <button id="btnUnlockAudio" class="bg-white text-orange-700 hover:bg-orange-50 px-4 py-1.5 rounded-lg font-bold text-xs shadow transition-all flex items-center gap-1.5 active:scale-95">
+      <i class="fa-solid fa-play"></i> Aktifkan Suara Bel
+    </button>
+  </div>
+
+  <!-- ================= HEADER NAVIGATION ================= -->
+  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Brand Logo & School Info -->
+      <div class="flex items-center space-x-3.5">
+        <div id="bellHeaderIconContainer" class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/25">
+          <i id="bellHeaderIcon" class="fa-solid fa-bell text-xl"></i>
+        </div>
+        <div>
+          <h1 id="headerSchoolName" class="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
+            SMP / SMA NEGERI 1 INDONESIA
+            <button id="btnEditSchoolName" class="text-xs text-slate-400 hover:text-blue-400 transition" title="Ubah Nama Sekolah">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+          </h1>
+          <p id="headerSchoolSubtitle" class="text-xs text-slate-400 font-medium">Sistem Bel Otomatis & Manajemen Jadwal Sekolah Terpadu</p>
+        </div>
+      </div>
+
+      <!-- Quick Controls & Actions -->
+      <div class="flex items-center flex-wrap gap-2.5">
+        
+        <!-- Auto Bell Switch -->
+        <div class="flex items-center bg-slate-800/90 border border-slate-700/80 rounded-xl px-3 py-1.5 shadow-sm">
+          <label class="relative inline-flex items-center cursor-pointer mr-2.5">
+            <input type="checkbox" id="toggleAutoBell" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+          </label>
+          <div class="text-xs">
+            <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider leading-none">Status Bel</span>
+            <span id="autoBellStatusText" class="font-bold text-emerald-400 leading-none">Otomatis Aktif</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <button id="btnOpenSettings" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
+          <i class="fa-solid fa-gear text-slate-400"></i>
+          <span class="hidden sm:inline">Pengaturan</span>
+        </button>
+
+        <button id="btnOpenBackup" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
+          <i class="fa-solid fa-database text-slate-400"></i>
+          <span class="hidden sm:inline">Backup / Restore</span>
+        </button>
+
+        <button id="btnFullscreen" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-blue-600/20">
+          <i class="fa-solid fa-expand"></i>
+          <span class="hidden sm:inline">Mode Layar Penuh</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-6 flex-1">
+    
+    <!-- Top Grid: Digital Clock, Next Bell, & Quick Ring -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- 1. Real-time Digital Clock Card (5 Cols) -->
+      <div class="lg:col-span-4 bg-gradient-to-br from-slate-900/90 to-slate-800/80 border border-slate-700/80 rounded-2xl p-5 sm:p-6 relative overflow-hidden shadow-xl flex flex-col justify-between">
+        <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span> WAKTU AKTIF REAL-TIME
+            </span>
+            <span id="liveZoneBadge" class="text-xs text-slate-400 font-mono font-bold">WIB (GMT+7)</span>
+          </div>
+
+          <div class="my-3 text-center sm:text-left">
+            <div id="liveClockDisplay" class="font-mono-clock text-4xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">
+              00:00:00
+            </div>
+            <div id="liveDateDisplay" class="text-sm sm:text-base font-semibold text-slate-300 mt-1 flex items-center justify-center sm:justify-start gap-2">
+              <i class="fa-regular fa-calendar-days text-blue-400"></i>
+              <span id="currentDayAndDate">Memuat tanggal...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <span>Hari Pembelajaran:</span>
+          <span id="activeDayPill" class="font-bold text-white bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">Senin</span>
+        </div>
+      </div>
+
+      <!-- 2. Next Bell Countdown Card (4 Cols) -->
+      <div class="lg:col-span-4 bg-gradient-to-br from-indigo-950/70 via-slate-900/90 to-slate-900/80 border border-indigo-500/20 rounded-2xl p-5 sm:p-6 relative overflow-hidden shadow-xl flex flex-col justify-between">
+        <div class="absolute -right-8 -top-8 w-36 h-36 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <i class="fa-solid fa-clock-rotate-left"></i> BEL BERIKUTNYA
+            </span>
+            <span id="nextBellTimeBadge" class="text-xs font-mono font-bold text-indigo-300 bg-indigo-900/40 px-2 py-0.5 rounded border border-indigo-700/40">--:--</span>
+          </div>
+
+          <div class="my-2">
+            <h3 id="nextBellLabel" class="text-lg font-bold text-white truncate">Menghitung jadwal...</h3>
+            <p id="nextBellAnnouncement" class="text-xs text-slate-400 line-clamp-2 mt-0.5">Pengumuman bel akan tampil di sini</p>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-indigo-900/40 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Hitung Mundur</span>
+            <span id="nextBellCountdown" class="font-mono-clock text-xl sm:text-2xl font-bold text-amber-400">00:00:00</span>
+          </div>
+          <button id="btnRingNextNow" class="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition active:scale-95">
+            <i class="fa-solid fa-play text-[10px]"></i> Bunyikan
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Quick Manual Bell Panel (4 Cols) -->
+      <div class="lg:col-span-4 bg-gradient-to-br from-slate-900/90 to-slate-800/80 border border-slate-700/80 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-hand-pointer text-amber-400"></i> Tombol Bunyi Manual
+            </span>
+            <span class="text-[10px] text-slate-400">Trigger Instan</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="window.bellApp.quickRing('masuk')" class="px-3 py-2.5 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition active:scale-95 shadow-sm">
+              <i class="fa-solid fa-door-open"></i> Masuk Kelas
+            </button>
+            <button onclick="window.bellApp.quickRing('istirahat')" class="px-3 py-2.5 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/30 text-amber-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition active:scale-95 shadow-sm">
+              <i class="fa-solid fa-mug-hot"></i> Istirahat
+            </button>
+            <button onclick="window.bellApp.quickRing('pulang')" class="px-3 py-2.5 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition active:scale-95 shadow-sm">
+              <i class="fa-solid fa-house"></i> Pulang
+            </button>
+            <button onclick="window.bellApp.quickRing('darurat')" class="px-3 py-2.5 bg-rose-950/70 hover:bg-rose-900/90 border border-rose-500/50 text-rose-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition active:scale-95 shadow-sm animate-pulse">
+              <i class="fa-solid fa-triangle-exclamation"></i> Darurat / Sirine
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center gap-2">
+          <input type="text" id="manualCustomTtsText" placeholder="Ketik pengumuman suara instan..." class="flex-1 bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+          <button id="btnManualSpeech" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition active:scale-95 flex items-center gap-1">
+            <i class="fa-solid fa-bullhorn"></i> Ucapkan
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= RUNNING TEXT MARQUEE ================= -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-2.5 flex items-center gap-3 text-xs shadow-md overflow-hidden">
+      <div class="flex items-center gap-1.5 font-bold text-blue-400 whitespace-nowrap bg-blue-950/60 px-2 py-1 rounded-md border border-blue-800/40">
+        <i class="fa-solid fa-bullhorn text-xs animate-bounce"></i> PENGUMUMAN
+      </div>
+      <div class="marquee-container flex-1">
+        <div id="marqueeTextDisplay" class="marquee-content text-slate-300 font-medium">
+          Selamat Datang di Sistem Bel Sekolah Digital • Tingkatkan Disiplin dan Semangat Belajar!
+        </div>
+      </div>
+      <button id="btnEditMarquee" class="text-slate-400 hover:text-white p-1 transition" title="Edit Teks Berjalan">
+        <i class="fa-solid fa-pen"></i>
+      </button>
+    </div>
+
+    <!-- ================= SCHEDULE MANAGEMENT BOARD ================= -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+      
+      <!-- Day Tabs & Schedule Actions Bar -->
+      <div class="border-b border-slate-800 bg-slate-900/90 px-4 sm:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        <!-- Day Selector Tabs -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto pb-2 md:pb-0 scrollbar-none" id="dayTabsContainer">
+          <button data-day="1" class="day-tab px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-blue-600 text-white shadow">
+            Senin <span class="today-tag hidden text-[9px] bg-white text-blue-700 px-1.5 py-0.2 rounded-full uppercase font-black">Hari Ini</span>
+          </button>
+          <button data-day="2" class="day-tab px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+            Selasa <span class="today-tag hidden text-[9px] bg-blue-500 text-white px-1.5 py-0.2 rounded-full uppercase font-black">Hari Ini</span>
+          </button>
+          <button data-day="3" class="day-tab px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+            Rabu <span class="today-tag hidden text-[9px] bg-blue-500 text-white px-1.5 py-0.2 rounded-full uppercase font-black">Hari Ini</span>
+          </button>
+          <button data-day="4" class="day-tab px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+            Kamis <span class="today-tag hidden text-[9px] bg-blue-500 text-white px-1.5 py-0.2 rounded-full uppercase font-black">Hari Ini</span>
+          </button>
+          <button data-day="5" class="day-tab px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+            Jumat <span class="today-tag hidden text-[9px] bg-blue-500 text-white px-1.5 py-0.2 rounded-full uppercase font-black">Hari Ini</span>
+          </button>
+          <button data-day="6" class="day-tab px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+            Sabtu <span class="today-tag hidden text-[9px] bg-blue-500 text-white px-1.5 py-0.2 rounded-full uppercase font-black">Hari Ini</span>
+          </button>
+          <button data-day="0" class="day-tab px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+            Minggu <span class="today-tag hidden text-[9px] bg-blue-500 text-white px-1.5 py-0.2 rounded-full uppercase font-black">Hari Ini</span>
+          </button>
+        </div>
+
+        <!-- Schedule Controls Buttons -->
+        <div class="flex items-center flex-wrap gap-2">
+          
+          <!-- Preset Selector -->
+          <div class="relative">
+            <select id="presetSelect" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 pr-8 focus:outline-none focus:border-blue-500 cursor-pointer appearance-none">
+              <option value="regular">Template: Jadwal Normal</option>
+              <option value="exam">Template: Ujian / PTS / PAS</option>
+              <option value="ramadan">Template: Jadwal Ramadhan</option>
+            </select>
+            <i class="fa-solid fa-chevron-down absolute right-3 top-3 text-[10px] text-slate-400 pointer-events-none"></i>
+          </div>
+
+          <button id="btnCopyDaySchedule" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+            <i class="fa-solid fa-copy text-slate-400"></i> Salin Jadwal
+          </button>
+
+          <button id="btnOpenAddModal" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-blue-600/20 active:scale-95">
+            <i class="fa-solid fa-plus"></i> Tambah Jadwal
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Schedule Table / Card List -->
+      <div class="p-4 sm:p-6 overflow-x-auto">
+        <div id="scheduleEmptyState" class="hidden py-12 text-center">
+          <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto text-slate-500 text-2xl mb-3">
+            <i class="fa-solid fa-calendar-xmark"></i>
+          </div>
+          <h4 class="text-base font-bold text-slate-300">Belum Ada Jadwal Bel Untuk Hari Ini</h4>
+          <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">Silakan tambahkan jadwal baru atau gunakan template preset.</p>
+          <button onclick="window.bellApp.openAddModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> Buat Jadwal Sekarang
+          </button>
+        </div>
+
+        <div id="scheduleTableContainer" class="w-full">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
+                <th class="pb-3 px-3">Status</th>
+                <th class="pb-3 px-3">Jam Bel</th>
+                <th class="pb-3 px-3">Kegiatan / Keterangan</th>
+                <th class="pb-3 px-3">Kategori</th>
+                <th class="pb-3 px-3">Jenis Nada</th>
+                <th class="pb-3 px-3">Pengumuman Suara (TTS)</th>
+                <th class="pb-3 px-3 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleTableBody" class="divide-y divide-slate-800/60 font-medium">
+              <!-- Rendered dynamically by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= BELL HISTORY LOG ================= -->
+    <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-lg">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-blue-400"></i>
+          <h3 class="text-sm font-bold text-white">Riwayat Bel Berbunyi Hari Ini</h3>
+          <span id="logCountBadge" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">0 Catatan</span>
+        </div>
+        <button id="btnClearLogs" class="text-xs text-slate-400 hover:text-rose-400 transition font-medium flex items-center gap-1">
+          <i class="fa-solid fa-trash-can"></i> Bersihkan Log
+        </button>
+      </div>
+
+      <div id="logContainer" class="max-h-48 overflow-y-auto space-y-2 pr-1">
+        <!-- Rendered dynamically by app.js -->
+        <p class="text-xs text-slate-500 py-3 text-center italic">Belum ada riwayat bel yang berbunyi hari ini.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="border-t border-slate-800/80 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>&copy; 2026 Smart School Bell Web App. Presisi Waktu & Pengumuman Suara Otomatis.</p>
+      <div class="flex items-center space-x-4 text-slate-400">
+        <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle text-[8px] text-emerald-400"></i> Local Engine Online</span>
+        <span>•</span>
+        <span class="font-mono">Web Audio API + TTS</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= NOTIFICATION TOAST POPUP ================= -->
+  <div id="bellToastModal" class="fixed bottom-6 right-6 z-50 transform translate-y-28 opacity-0 pointer-events-none transition-all duration-500 ease-out">
+    <div class="bg-gradient-to-r from-blue-900 to-indigo-900 border-2 border-blue-400/80 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center space-x-4 max-w-md glow-active">
+      <div class="w-12 h-12 rounded-xl bg-blue-500/30 flex items-center justify-center text-amber-300 text-2xl flex-shrink-0 animate-ringing">
+        <i class="fa-solid fa-bell"></i>
+      </div>
+      <div>
+        <span class="text-[10px] uppercase tracking-wider font-extrabold text-blue-300 block" id="toastSourceTag">BEL OTOMATIS BERBUNYI</span>
+        <h4 id="toastBellTitle" class="text-base font-bold text-white leading-tight">Jam Pelajaran Ke-1</h4>
+        <p id="toastBellAnnouncement" class="text-xs text-blue-200/90 mt-0.5 line-clamp-2">Saatnya jam pelajaran pertama dimulai.</p>
+      </div>
+      <button onclick="window.bellApp.hideToast()" class="text-blue-300 hover:text-white text-lg p-1 ml-2">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: TAMBAH / EDIT JADWAL ================= -->
+  <div id="scheduleModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 id="modalTitle" class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-clock text-blue-400"></i> Tambah Jadwal Bel
+        </h3>
+        <button id="btnCloseModal" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="scheduleForm" class="space-y-4 mt-4">
+        <input type="hidden" id="formScheduleId">
+        <input type="hidden" id="formDayIndex">
+
+        <!-- Jam Bel & Kategori -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Jam Bel (HH:MM)</label>
+            <input type="time" id="formTime" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Kategori Bel</label>
+            <select id="formType" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              <option value="masuk">Masuk Kelas</option>
+              <option value="pelajaran">Ganti Pelajaran</option>
+              <option value="istirahat">Istirahat</option>
+              <option value="ibadah">Ibadah / Sholat</option>
+              <option value="pulang">Pulang Sekolah</option>
+              <option value="upacara">Upacara / Apel</option>
+              <option value="khusus">Kegiatan Khusus</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Nama Kegiatan / Label -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Nama Kegiatan / Label</label>
+          <input type="text" id="formLabel" required placeholder="Contoh: Jam Pelajaran Ke-1" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500">
+        </div>
+
+        <!-- Jenis Nada -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Pilihan Nada Lonceng</label>
+          <div class="flex items-center gap-2">
+            <select id="formTone" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              <option value="westminster">Westminster Chimes (Lonceng Klasik Sekolah)</option>
+              <option value="3tone">3-Tone Melody (Modern Chime)</option>
+              <option value="dingdong">Ding-Dong Chime (Pemberitahuan)</option>
+              <option value="electric">Lonceng Listrik Kring (Dering Cepat)</option>
+              <option value="siren">Sirine Darurat / Peringatan</option>
+            </select>
+            <button type="button" id="btnTestTone" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1">
+              <i class="fa-solid fa-play"></i> Tes
+            </button>
+          </div>
+        </div>
+
+        <!-- Pengumuman Suara (TTS) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Teks Suara Pengumuman Otomatis (TTS)</label>
+          <textarea id="formAnnouncement" rows="2" placeholder="Contoh: Saatnya jam pelajaran pertama dimulai." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"></textarea>
+          <p class="text-[11px] text-slate-500 mt-1">Kosongkan jika hanya ingin membunyikan nada lonceng tanpa suara ucapan.</p>
+        </div>
+
+        <!-- Aktif / Nonaktif Toggle -->
+        <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800">
+          <span class="text-xs font-medium text-slate-300">Aktifkan Bel Ini</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="formEnabled" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
+          <button type="button" id="btnCancelModal" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition">
+            Batal
+          </button>
+          <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-blue-600/25">
+            Simpan Jadwal
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ================= MODAL: PENGATURAN SUARA & SEKOLAH ================= -->
+  <div id="settingsModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-blue-400"></i> Pengaturan Sistem & Suara
+        </h3>
+        <button onclick="window.bellApp.closeSettingsModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 mt-4">
+        
+        <!-- School Name -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Nama Sekolah</label>
+          <input type="text" id="settingSchoolName" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <!-- Subtitle -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Sub Judul / Keterangan</label>
+          <input type="text" id="settingSchoolSubtitle" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <!-- Running Text -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Teks Berjalan Pengumuman (Marquee)</label>
+          <textarea id="settingRunningText" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"></textarea>
+        </div>
+
+        <!-- Volume Master Slider -->
+        <div>
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+            <span>Volume Utama Bel</span>
+            <span id="volumePercentDisplay" class="font-mono text-blue-400">90%</span>
+          </div>
+          <input type="range" id="settingVolume" min="0" max="1" step="0.05" value="0.9" class="w-full accent-blue-500 cursor-pointer">
+        </div>
+
+        <!-- TTS Toggle -->
+        <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800">
+          <div>
+            <span class="text-xs font-semibold text-slate-200 block">Pengumuman Suara (Text-to-Speech)</span>
+            <span class="text-[11px] text-slate-500">Bacakan keterangan teks bel otomatis setelah lonceng</span>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="settingTtsEnabled" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+
+      </div>
+
+      <div class="flex items-center justify-end space-x-2 pt-4 mt-4 border-t border-slate-800">
+        <button onclick="window.bellApp.closeSettingsModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">
+          Batal
+        </button>
+        <button onclick="window.bellApp.saveSettings()" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/25">
+          Simpan Pengaturan
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= MODAL: BACKUP & RESTORE JSON ================= -->
+  <div id="backupModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-database text-blue-400"></i> Backup & Restore Data
+        </h3>
+        <button onclick="window.bellApp.closeBackupModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 mt-4">
+        
+        <!-- Export Box -->
+        <div class="p-4 bg-slate-950 rounded-xl border border-slate-800">
+          <h4 class="text-xs font-bold text-white mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-download text-emerald-400"></i> Backup Jadwal (Ekspor File JSON)
+          </h4>
+          <p class="text-[11px] text-slate-400 mb-3">Unduh seluruh jadwal dan konfigurasi bel sekolah ke dalam file JSON agar dapat disimpan atau dipindahkan ke komputer lain.</p>
+          <button onclick="window.bellStorage.exportData()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow">
+            <i class="fa-solid fa-file-export"></i> Download Backup JSON
+          </button>
+        </div>
+
+        <!-- Import Box -->
+        <div class="p-4 bg-slate-950 rounded-xl border border-slate-800">
+          <h4 class="text-xs font-bold text-white mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-upload text-blue-400"></i> Restore Jadwal (Impor File JSON)
+          </h4>
+          <p class="text-[11px] text-slate-400 mb-3">Pulihkan jadwal dari file cadangan JSON yang telah Anda simpan sebelumnya.</p>
+          <input type="file" id="importJsonFileInput" accept=".json" class="hidden">
+          <button onclick="document.getElementById('importJsonFileInput').click()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow">
+            <i class="fa-solid fa-file-import"></i> Pilih File JSON Backup
+          </button>
+        </div>
+
+        <!-- Reset Default -->
+        <div class="p-4 bg-rose-950/20 rounded-xl border border-rose-900/30">
+          <h4 class="text-xs font-bold text-rose-400 mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate-left"></i> Reset ke Jadwal Default
+          </h4>
+          <p class="text-[11px] text-slate-400 mb-3">Mengembalikan semua jadwal sekolah ke setelan bawaan standar.</p>
+          <button onclick="window.bellApp.handleResetToDefault()" class="w-full py-2 bg-rose-800/80 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-trash-can-arrow-up"></i> Reset Data Jadwal
+          </button>
+        </div>
+
+      </div>
+
+      <div class="flex justify-end pt-3 mt-4 border-t border-slate-800">
+        <button onclick="window.bellApp.closeBackupModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">
+          Tutup
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= MODAL: SALIN JADWAL KE HARI LAIN ================= -->
+  <div id="copyModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-copy text-blue-400"></i> Salin Jadwal Hari Ini
+        </h3>
+        <button onclick="window.bellApp.closeCopyModal()" class="text-slate-400 hover:text-white text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-3">
+        <p class="text-xs text-slate-300">Pilih hari tujuan untuk menyalin seluruh jadwal dari <strong id="copySourceDayLabel" class="text-blue-400">Senin</strong>:</p>
+
+        <div class="space-y-1.5" id="copyTargetDaysCheckboxes">
+          <!-- Rendered dynamically in app.js -->
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-2 pt-4 mt-4 border-t border-slate-800">
+        <button onclick="window.bellApp.closeCopyModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">
+          Batal
+        </button>
+        <button onclick="window.bellApp.executeCopySchedule()" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/25">
+          Terapkan Salin
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/scheduler.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
