@@ -10,6 +10,10 @@ Aplikasi Bel Sekolah Otomatis modern dan responsif berbasis web dengan sistem su
 
 ## ✨ Fitur Utama
 
+- 🔒 **Sistem Login Multi-Role (Guru Piket & Administrator)**:
+  - **Mode Publik / Tamu**: Tampilan papan jam & display bel otomatis yang aman dari perubahan tanpa izin.
+  - **Guru Piket**: Akses kontrol bel manual, teks pengumuman darurat, dan penyesuaian jadwal harian.
+  - **Administrator**: Akses penuh ke seluruh jadwal, pengaturan nama sekolah, backup/restore data, dan pengelolaan kata sandi.
 - ⏰ **Jam & Tanggal Digital Real-Time**: Tampilan jam presisi tinggi (Jam:Menit:Detik) dan kalender bahasa Indonesia.
 - ⏳ **Hitung Mundur Bel Berikutnya**: Menampilkan nama kegiatan dan hitung mundur sisa waktu secara otomatis.
 - 🎵 **Sistem Audio Web Audio API**: Menghasilkan berbagai variasi nada bel murni (*Westminster Chimes*, *3-Tone Melody*, *Ding Dong*, *Lonceng Listrik Kring*, *Sirine Darurat*) tanpa dependensi file eksternal.
@@ -35,6 +39,17 @@ Aplikasi Bel Sekolah Otomatis modern dan responsif berbasis web dengan sistem su
    ```
 2. Buka folder proyek dan jalankan file `index.html` langsung di browser favorit Anda (*Google Chrome, Microsoft Edge, Firefox, Safari*).
 3. Klik tombol **"Aktifkan Suara Bel"** pada banner atas untuk mengizinkan pemutaran audio browser.
+
+---
+
+## 🔐 Akun Login Bawaan (Default)
+
+| Peran (Role) | Username | Password | Hak Akses |
+|---|---|---|---|
+| **Guru Piket** | `piket` | `piket123` | Bunyikan bel manual, pengumuman suara, edit jadwal hari ini |
+| **Administrator** | `admin` | `admin123` | Akses penuh: Semua jadwal, ganti password, backup/restore, pengaturan sekolah |
+
+> *Catatan: Kata sandi dapat diganti setelah login melalui menu **Pengaturan > Ubah Kata Sandi Akun**.*
 
 ---
 
